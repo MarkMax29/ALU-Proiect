@@ -1,0 +1,97 @@
+`timescale 1ns/1ps
+
+`include "../src/Control_Unit_ALU.v"
+
+`include "../src/D_FLIPFLOP.v"
+
+`include "../src/Mux_2x1.v"
+
+`include "../src/COUNTER.v"
+
+`include "../src/RCA_SUBTRACTOR.v"
+
+`include "../src/booth_radix_2.v"
+
+`include "../src/restoring_div.v"
+`include "../src/ALU.v"
+
+module ALU_tb;
+  // Inputs
+  reg        clk;
+  reg        rst;
+  reg        BEGIN;
+  reg [1:0]  Op;
+  reg [7:0]  inA;
+  reg [7:0]  inM;
+  // Outputs
+  wire       END;
+  wire [15:0] OUTBUS;
+
+  // Instantiate the Unit Under Test
+  ALU uut (
+    .clk     (clk),
+    .rst     (rst),
+    .BEGIN   (BEGIN),
+    .Op      (Op),
+    .inA     (inA),
+    .inM     (inM),
+    .END     (END),
+    .OUTBUS  (OUTBUS)
+  );
+
+  // Clock generator: 10 ns period
+  initial clk = 0;
+  always #5 clk = ~clk;
+
+  initial begin
+    // Dump waves for GTKWave, etc.
+    $dumpfile("ALU_tb.vcd");
+    $dumpvars(0, ALU_tb);
+
+    //=== Reset ===
+    rst    = 1; BEGIN = 0; Op = 2'b00; inA = 8'd0; inM = 8'd0;
+    #12;
+    rst = 0;
+    #8;
+
+    //=== Test 1: ADD 27 + 20 = 47 ===
+    inA   = 8'd27; inM = 8'd20; Op = 2'b00; BEGIN = 0;
+    #10;
+    if (OUTBUS !== 16'd47)
+      $error("ADD failed: got %0d, expected 47", OUTBUS);
+    else
+      $display("ADD passed: 27+20 = %0d", OUTBUS);
+
+    //=== Test 2: SUB 40 - 33 = 7 ===
+    inA   = 8'd40; inM = 8'd33; Op = 2'b01; BEGIN = 0;
+    #10;
+    if (OUTBUS !== 16'd7)
+      $error("SUB failed: got %0d, expected 7", OUTBUS);
+    else
+      $display("SUB passed: 40-33 = %0d", OUTBUS);
+
+    //=== Test 3: MUL 15 * 3 = 45 ===
+    inA    = 8'd15; inM = 8'd3; Op = 2'b10; BEGIN = 1;
+    #20;
+    //wait (END);
+    if (OUTBUS !== 16'd45)
+      $error("MUL failed: got %0d, expected 45", OUTBUS);
+    else
+      $display("MUL passed: 15*3 = %0d", OUTBUS);
+    BEGIN = 0;
+    #10;
+
+    //=== Test 4: DIV 100 / 3 = 33 ===
+    inA    = 8'd100; inM = 8'd3; Op = 2'b11; BEGIN = 1;
+    //wait (END);
+    if (OUTBUS[7:0] !== 8'd33)
+      $error("DIV failed: got %0d, expected 33", OUTBUS[7:0]);
+    else
+      $display("DIV passed: 100/3 = %0d", OUTBUS[7:0]);
+    BEGIN = 0;
+    #10;
+
+    $display("All ALU tests completed.");
+    $finish;
+  end
+endmodule
